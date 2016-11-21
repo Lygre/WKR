@@ -461,7 +461,7 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			})
 			packets.inject(packet)
 			local packet = packets.new('outgoing', 0x016, {
-			["Target Index"]=185,["_junk1"]=1,
+			["Target Index"]=185,["_junk1"]=0,
 			})
 			packets.inject(packet)
 
