@@ -103,7 +103,7 @@ windower.register_event('addon command', function(...)
 	if S{'yorcia','marjami','kamihr','ceizak','morimar','foret'}:contains(lcmd) then
 		pkt = validate()
 		unk_1 = warps[lcmd]
-		busy = true
+		warp_busy = true
 		poke_warp()
 		if args[1] and args[1]:lower() == 'all' then
 			windower.send_ipc_message('goall '..lcmd)
