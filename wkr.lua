@@ -106,6 +106,22 @@ windower.register_event('addon command', function(...)
 		if args[1] and args[1]:lower() == 'all' then
 			windower.send_ipc_message('goall '..lcmd)
 		end
+	elseif lcmd == 'poke' then
+		if args[1] then 
+			if args[1]:lower() == 'tenzen' then
+				pkt = validate()
+				npc = 16908419
+				target_index = 131
+				poke_warp()
+			elseif S{'yorcia','marjami','kamihr','ceizak','morimar','foret'}:contains(args[1]:lower()) then
+				pkt = validate()
+				npc = zones[args[1]:lower()].npc
+				target_index = zones[args[1]:lower()].target_index
+				poke_warp()
+			end	
+		else 
+			windower.add_to_chat(10,"Invalid or missing npc selection")
+		end
 	elseif S{'tenzen'}:contains(lcmd) then
 		pkt = validate()
 		npc = 17760398
@@ -119,7 +135,6 @@ windower.register_event('addon command', function(...)
 		if args[1] and args[1]:lower() == 'all' then
 			windower.send_ipc_message('goall '..lcmd)
 		end
-
 	elseif S{'levi'}:contains(lcmd) then
 		pkt = validate()
 		npc = 17743945
@@ -134,7 +149,7 @@ windower.register_event('addon command', function(...)
 		if args[1] and args[1]:lower() == 'all' then
 			windower.send_ipc_message('goall '..lcmd)
 		end
-		
+
 	elseif S{'qufim'}:contains(lcmd) then
 		pkt = validate()
 		npc = 17760398
@@ -182,7 +197,6 @@ windower.register_event('addon command', function(...)
 		special_busy = false
 		gate_busy = true
 		poke_warp()
-		
 	elseif lcmd == 'levicryst' then
 		pkt = validate()
 		npc = 17641518
@@ -252,16 +266,15 @@ windower.register_event('addon command', function(...)
 		-- gate_busy = false
 		-- cryst_busy = false
 		-- new_busy = true
-	
 	elseif lcmd == 'ki' then
 		if args[1] and args[1]:lower() == 'tenzen' then
 			pkt = validate()
 			opt_ind = 2562
-			npc = 17744179
+			npc = 17760501
 			unk_1 = 0
-			target_index = 307
-			menu = 429
-			zone = 236
+			target_index = 245
+			menu = 895
+			zone = 240
 
 			busy = false 
 			gate_busy = false
@@ -329,16 +342,6 @@ windower.register_event('addon command', function(...)
 			menu = 8702
 			opt_ind = 2
 			unk_1 = 120
-			busy = true
-			poke_warp()
-		elseif S{'levi'}:contains(lcmd) then
-			pkt = validate()
-			npc = 17743945
-			target_index = 73
-			zone = 236
-			menu = 8701
-			opt_ind = 2
-			unk_1 = 93
 			busy = true
 			poke_warp()
 		elseif subcmd == 'kis' then
@@ -472,8 +475,8 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			packet["Zone"]=zone
 			packet["Menu ID"]=menu
 			packets.inject(packet)
-			return true			
-			
+			return true	
+
 		elseif cryst_busy == true and pkt then
 			local packet = packets.new('outgoing', 0x016, {
 			["Target Index"]=pkt['me'],
@@ -531,7 +534,7 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			-- {ctype='unsigned short',    label='Target Index',       fn=index},          -- 1C
 			-- {ctype='unsigned short',    label='_unknown3'},                             -- 1E   Not zone ID
 			
-			local packet = packets.new('outgoing', 0x05c)
+			local packet = packets.new('outgoing', 0x05C)
 			packet["X"]=497.22702026367
 			packet["Z"]=55.556003570557
 			packet["Y"]= -432.93200683594
@@ -542,16 +545,16 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			packet["_unknown3"]=38657
 			packets.inject(packet)
 			
-			local packet = packets.new('outgoing', 0x05c)
-			packet["X"]=17.27500152879
-			packet["Z"]= -4.4440002441406
-			packet["Y"]= -32.927001953125
-			packet["Target ID"]=17604660
-			packet["Target Index"]=52
-			packet["_unknown1"]=594
-			packet["_unknown2"]=2097152202
-			packet["_unknown3"]=38657
-			packets.inject(packet)
+			-- local packet = packets.new('outgoing', 0x05c)
+			-- packet["X"]=17.27500152879
+			-- packet["Z"]= -4.4440002441406
+			-- packet["Y"]= -32.927001953125
+			-- packet["Target ID"]=17604660
+			-- packet["Target Index"]=52
+			-- packet["_unknown1"]=594
+			-- packet["_unknown2"]=2097152202
+			-- packet["_unknown3"]=38657
+			-- packets.inject(packet)
 			return true		
 				
 		end
@@ -583,7 +586,7 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			gate_busy = false
 			pkt = {}
 			return true
-			
+
 		elseif cryst_busy == true and pkt then
 			local packet = packets.new('outgoing', 0x05B)
 			packet["Target"]=npc
@@ -622,8 +625,6 @@ windower.register_event('ipc message',function (msg)
 		if S{'yorcia','marjami','kamihr','ceizak','morimar','foret'}:contains(ipc_cmd) then
 			windower.send_command('wait 2;wkr go '..ipc_cmd)
 		elseif S{'tenzen'}:contains(ipc_cmd) then
-			windower.send_command('wait 2;wkr go '..ipc_cmd)
-		elseif S{'levi'}:contains(ipc_cmd) then
 			windower.send_command('wait 2;wkr go '..ipc_cmd)
 		elseif ipc_cmd == 'kis' then
 			windower.send_command('wait 2;wkr go kis')
