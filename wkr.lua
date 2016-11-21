@@ -453,28 +453,40 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			})
 			packets.inject(packet)
 			local packet = packets.new('outgoing', 0x016, {
-			["Target Index"]='-',
+			["Target Index"]=157,["_junk1"]=0,
 			})
 			packets.inject(packet)
 			local packet = packets.new('outgoing', 0x016, {
-			["Target Index"]='-',
+			["Target Index"]=174,["_junk1"]=0,
 			})
 			packets.inject(packet)
 			local packet = packets.new('outgoing', 0x016, {
-			["Target Index"]='-',
+			["Target Index"]=185,["_junk1"]=1,
 			})
 			packets.inject(packet)
 
 			local packet = packets.new('outgoing', 0x05B)
 			packet["Target"]=npc
 			packet["Option Index"]=opt_ind
-			packet["_unknown1"]=unk_1
+			packet["_unknown1"]=0
 			packet["Target Index"]=target_index
 			packet["Automated Message"]=true
 			packet["_unknown2"]=0
 			packet["Zone"]=zone
 			packet["Menu ID"]=menu
 			packets.inject(packet)
+
+			local packet = packets.new('outgoing', 0x05C)
+			packet["X"]= -640.02905273438
+			packet["Z"]= -231.34701538086
+			packet["Y"]= 512.68005371094
+			packet["Target ID"]=npc
+			packet["Target Index"]=target_index
+			packet["_unknown1"]=545
+			packet["_unknown2"]=2097152032
+			packet["_unknown3"]=48897
+			packets.inject(packet)
+
 			return true	
 
 		elseif cryst_busy == true and pkt then
