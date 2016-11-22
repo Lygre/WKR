@@ -123,7 +123,7 @@ windower.register_event('addon command', function(...)
 		log('Force checking ki count')
 		local packet = packets.new('outgoing', 0x061, {})
 		packets.inject(packet)
-		coroutine.sleep(2)
+		coroutine.sleep(1)
 		local x = 1
 		local ki_list = windower.ffxi.get_key_items()
 		for k,v in pairs(npcs[current_zone]) do
@@ -262,6 +262,8 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 					activate_by_addon_npc = false
 					packets.inject(packet)
 					log('KI \"' .. v['KI Name'] .. '\" has been baught!' )
+					coroutine.sleep(1)
+					windower.send_command('htmb force')
 					break
 				end
 			end
