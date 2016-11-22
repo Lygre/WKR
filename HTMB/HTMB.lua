@@ -220,7 +220,7 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			create_0x05B(current_zone,1,true)
 			-- send entry request for BCNM room 1
 			log('Sending 0x05C packet (Entry request for BCNM room 1)')
-			create_0x05C(current_zone,zones[current_zone][current_ki_id]['0x05C'][1])
+			create_0x05C(zones[current_zone][current_ki_id]['0x05C'][1])
 		end
 		if activate_by_addon_npc == true then
 			log('packet 0x034 received (menu entry packet for ki buying)')
@@ -255,21 +255,21 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 		if activate_by_addon == true then
 			log('packet 0x065 received (Entry confirmation packet)')
 			 -- parse the packet for its data
-			packet = packets.parse('incoming', data)
+			local packet = packets.parse('incoming', data)
 			-- get the confirmation co-ordinates
 			local x = packet['X'] 
 			local z = packet['Z']
 			local y = packet['Y']
 			
 			-- if unknow = 1 then room 1 is free, for farvour confirmation we check co-ordinates against ones we sent
-			if packet['_unknown1'] == 1 and x == zones[current_zone][current_ki_id]['0x05C'][number_of_attempt]['X'] and y == zones[current_zone][current_ki_id]['0x05C'][number_of_attempt]['Y'] and z == zones[current_zone][current_ki_id]['0x05C'][number_of_attempt]['Z'] then
-				log('Confirmed BCNM room 1 is open, waiting for 0x055 packet')
+			if packet['_unknown1'] == 1 then
+				log('Confirmed BCNM room '.. number_of_attempt ..' is open, waiting for 0x055 packet')
 			else
 			-- failed to entre room 1 so we cycle to room 2 then room 3
 				log('BCNM Room ' .. number_of_attempt .. ' is full. Attempting next BCNM room!')
 				number_of_attempt = number_of_attempt + 1
 				if number_of_attempt < 4 then
-					create_0x05C(current_zone,zones[current_zone][current_ki_id]['0x05C'][number_of_attempt])
+					create_0x05C(zones[current_zone][current_ki_id]['0x05C'][number_of_attempt])
 				end
 			end
 		end
@@ -281,6 +281,7 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			local packet = packets.new('outgoing', 0x016, {
 				["Target Index"]=pkt['me'],
 			})
+			packets.inject(packet)
 			activate_by_addon = false
 			delete_commands()
 			number_of_attempt = 1
@@ -341,7 +342,7 @@ function create_0x05B_ki(zone_number,option_index,message,ki_id)
 end
 
 -- function to request entry to BCNM bassed on the current zone id
-function create_0x05C(zone_number,packet_table)
+function create_0x05C(packet_table)
 	local packet = packets.new('outgoing', 0x05C)
 		packet["X"]= packet_table["X"]
 		packet["Z"]= packet_table["Z"]
@@ -365,26 +366,33 @@ windower.register_event('zone change',function(new_id,old_id)
 		log('You have entered a BCNM area.')
 		coroutine.sleep(10)
 		log('Checking potential battlefields!')
-		local x = 1
-		local ki_list = windower.ffxi.get_key_items()
+		local toons_kis = windower.ffxi.get_key_items()
+		local matching_kis = {}
+		local current_zone_kis = {}
+		-- ki's you do have
+		for i,d in pairs(toons_kis) do
+			-- i = table index
+			-- d = ki id
+			-- ki's you need
+			for k, v in pairs(key_items) do
+				-- k = ki id
+				-- v = table contents
+				if d == k then
+					table.insert(matching_kis, d)
+				end
+			end
+		end
 		for k,v in pairs(zones[new_id]) do
 			if k ~= nil and type(k) == 'number' then
-				for i,d in pairs(ki_list) do
-					if d == k then
-						log('Found KI ' .. d)
-						for j,e in pairs(key_items) do
-							if j == k then
-								for l,m in pairs(e['Zone ID']) do
-									if l == new_id then 
-										generate_commands(x,k)
-										x = x + 1
-									end
-								end
-							end
-						end
-					end
+				-- k = ki id
+				-- v = table contents
+				if table.contains(matching_kis, k) then
+					table.insert(current_zone_kis, k)
 				end
-			end	
+			end
+		end
+		for k, v in pairs(current_zone_kis) do
+			generate_commands(k,v)
 		end
 	else
 		delete_commands()
@@ -428,7 +436,6 @@ end
 
 function find_missing_kis()
 
-	local exit_loop = false
 	local toons_kis = windower.ffxi.get_key_items()
 	local matching_kis = {}
 	local missing_kis = {}
