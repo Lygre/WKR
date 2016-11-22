@@ -16,7 +16,7 @@ return{
 			["_unknown1"] = 0,
 		},
 	},
-	[240] = { -- Sandy
+	[240] = { -- windy
 		['NPC'] = 17760501,
 		['NPC Index'] = 245,
 		['Menu ID'] = 895,
@@ -25,6 +25,13 @@ return{
 				['KI Name'] = "Warrior's Path phantom gem",
 				["Option Index"] = 2562,
 			},
+		},
+	},
+	[231] = { -- sandy
+		['NPC'] = 17723815,
+		['NPC Index'] = 423,
+		['Menu ID'] = 829,
+		['KI ID'] = {
 		},
 	},
 }

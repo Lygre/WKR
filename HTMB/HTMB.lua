@@ -124,6 +124,7 @@ windower.register_event('addon command', function(...)
 		local packet = packets.new('outgoing', 0x061, {})
 		packets.inject(packet)
 		coroutine.sleep(1)
+		local exit_loop = false
 		local x = 1
 		local ki_list = windower.ffxi.get_key_items()
 		for k,v in pairs(npcs[current_zone]) do
@@ -150,9 +151,14 @@ windower.register_event('addon command', function(...)
 						end
 					end
 				end
-				log('You have all available KI\'s')
+				exit_loop = true
 				break
 			end
+		end
+		if exit_loop then
+			log('You have all available KI\'s')
+		else
+			log('You are not in a zone with a KI npc!')
 		end
 	else
 		log('Commands have not been generated yet')
