@@ -61,28 +61,40 @@ function load_KIs()
 	return t
 end
 
+function load_NPCs()
+
+	local f = io.open(windower.addon_path..'data/npc_info.lua','r')
+	local t = f:read("*all")
+	t = assert(loadstring(t))()
+	f:close()
+	
+	return t
+end
+
 local zones = load_zones()
 local key_items = load_KIs()
+local npcs = load_NPCs()
 local player = windower.ffxi.get_player()
+local number_of_merits = 0
 local current_zone = windower.ffxi.get_info().zone
 local pkt = {}
 local first_poke = true
 local number_of_attempt = 1
 local activate_by_addon = false
-local unlock_commands = {}
+local activate_by_addon_npc = false
 local usable_commands = {}
+local ki_commands = {}
 local current_ki_id = 0
 
 windower.register_event('addon command', function(...)
 
 	local args = T{...}
 	local cmd = args[1]
-	args:remove(1)
 	local lcmd = cmd:lower()
 	
 	if table.length(usable_commands) > 0 then 
 		for k,v in pairs(usable_commands) do
-			if v['command_name']:contains(lcmd) then
+			if v['command_name']:contains(lcmd) and v['command_name']:contains(args[2]) then
 				player = windower.ffxi.get_player()
 				current_zone = windower.ffxi.get_info().zone
 				pkt = validate()
@@ -92,6 +104,54 @@ windower.register_event('addon command', function(...)
 				current_ki_id = v['KI ID']
 				poke_warp(current_zone,v['KI ID'])
 				
+			end
+		end
+	elseif table.length(ki_commands) > 0 then 
+		for k,v in pairs(ki_commands) do
+			if v['command_name']:contains(lcmd) and v['command_name']:contains(args[2]) then
+				player = windower.ffxi.get_player()
+				current_zone = windower.ffxi.get_info().zone
+				pkt = validate()
+				log('Checking data for KI NPC in zone!')
+				activate_by_addon_npc = true
+				current_ki_id = v['KI ID']
+				poke_npc(current_zone,v['KI ID'])
+				
+			end
+		end
+	elseif lcmd == 'force' then
+		log('Force checking ki count')
+		local packet = packets.new('outgoing', 0x061, {})
+		packets.inject(packet)
+		coroutine.sleep(2)
+		local x = 1
+		local ki_list = windower.ffxi.get_key_items()
+		for k,v in pairs(npcs[current_zone]) do
+			if v ~= nil and type(v) == 'table' and k == 'KI ID' then
+				local count = 2
+				for j,e in pairs(v) do
+					for i,d in pairs(ki_list) do
+					-- d = ki id
+						--log('entered 3, ki= ' .. j .. ' ' .. d .. ' tl: ' .. table.length(ki_list) .. ' count: ' .. count)
+						if j ~= d then
+							count = count + 1
+						elseif j == d then 
+							break
+						end
+					end
+					
+					if table.length(ki_list) < count then
+						log('Found missing KI \"' .. key_items[j]['KI Name'] .. '\"')
+						if number_of_merits >= key_items[j]['Merit Cost'] then
+							generate_ki_commands(x,j,e["Option Index"])
+							x = x + 1
+						else
+							log('You do not have enought merits to buy \"' .. key_items[j]['KI Name'] .. '\". Will not create command.')
+						end
+					end
+				end
+				log('You have all available KI\'s')
+				break
 			end
 		end
 	else
@@ -138,6 +198,33 @@ function poke_warp(zone_number,ki_id)
 	end
 end
 
+-- now requires a valid zone number that exists in the zone_info.lua and also requires to be within range of the BCNM entrance
+function poke_npc(zone_number,ki_id)
+
+	local distance = 0
+	if windower.ffxi.get_mob_by_index(npcs[zone_number]['NPC Index']) then
+		distance = windower.ffxi.get_mob_by_index(npcs[zone_number]['NPC Index']).distance
+		-- turn distance into yalms to match the distance addon
+		distance = distance:sqrt()
+		if distance > 0 and distance < 5 then
+			local packet = packets.new('outgoing', 0x01A, {
+				["Target"]=npcs[zone_number]['NPC'],
+				["Target Index"]=npcs[zone_number]['NPC Index'],
+				["Category"]=0,
+				["Param"]=0,
+				["_unknown1"]=0})
+			log('Attempting to buy KI, sending poke!')
+			packets.inject(packet)
+		else
+			activate_by_addon_npc = false
+			log('You are too far away from the NPC!')
+		end
+	else
+		activate_by_addon_npc = false
+		log('Cureently no information regarding KI NPC\'s in this zone')
+	end
+end
+
 -- parsing of relevant incoming packets to perform actions
 windower.register_event('incoming chunk',function(id,data,modified,injected,blocked)
 	
@@ -159,6 +246,25 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			-- send entry request for BCNM room 1
 			log('Sending 0x05C packet (Entry request for BCNM room 1)')
 			create_0x05C(current_zone,zones[current_zone][current_ki_id]['0x05C'][1])
+		end
+		if activate_by_addon_npc == true then
+			log('packet 0x034 received (menu entry packet for ki buying)')
+			-- itterate through ki id's for the option index associated
+			for k, v in pairs(npcs[current_zone]['KI ID']) do
+				if k == current_ki_id then
+					log('Sending first 0x05B packet (menu choice)')
+					create_0x05B_ki(current_zone,v["Option Index"],true,current_ki_id)
+					log('Sending second 0x05B packet (menu choice)')
+					create_0x05B_ki(current_zone,v["Option Index"],false,current_ki_id)
+					local packet = packets.new('outgoing', 0x016, {
+						["Target Index"]=pkt['me'],
+					})
+					activate_by_addon_npc = false
+					packets.inject(packet)
+					log('KI \"' .. v['KI Name'] .. '\" has been baught!' )
+					break
+				end
+			end
 		end
 		
 	elseif id == 0x065 then -- confirmation packet of available BCNM room
@@ -195,6 +301,9 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			delete_commands()
 			number_of_attempt = 1
 		end
+	elseif id == 0x63 and data:byte(5) == 2 then
+		number_of_merits = data:byte(11)%128
+		log('Total merit update. Total: ' .. number_of_merits)
 	end
 end)
 
@@ -223,6 +332,20 @@ function create_0x05B(zone_number,option_index,message)
 		packet["_unknown2"]=0
 		packet["Zone"]=zone_number
 		packet["Menu ID"]=zones[zone_number][current_ki_id]['0x05B']["Menu ID"]
+	packets.inject(packet)
+end
+
+-- function to send menu choice to buy ki bassed on zone id
+function create_0x05B_ki(zone_number,option_index,message,ki_id)
+	local packet = packets.new('outgoing', 0x05B)
+		packet["Target"]=npcs[zone_number]['0x05B']["Target"]
+		packet["Option Index"]=npcs[zone_number]['KI ID'][ki_id]["Option Index"]
+		packet["_unknown1"]=npcs[zone_number]['0x05B']["_unknown1"]
+		packet["Target Index"]=npcs[zone_number]['0x05B']["Target Index"]
+		packet["Automated Message"]=message
+		packet["_unknown2"]=0
+		packet["Zone"]=zone_number
+		packet["Menu ID"]=npcs[zone_number]['0x05B']["Menu ID"]
 	packets.inject(packet)
 end
 
@@ -275,10 +398,46 @@ windower.register_event('zone change',function(new_id,old_id)
 	else
 		delete_commands()
 	end
+	if npcs[new_id] then
+		log('You have entered an area with a KI npc.')
+		coroutine.sleep(10)
+		log("Checking for missing KI's!")
+		player = windower.ffxi.get_player()
+		local x = 1
+		local ki_list = windower.ffxi.get_key_items()
+		for k,v in pairs(npcs[new_id]) do
+			if v ~= nil and type(v) == 'table' and k == 'KI ID' then
+				for j,e in pairs(v) do
+					for i,d in pairs(ki_list) do
+					-- d = ki id
+						if j == d then
+							log('Found missing KI \"' .. key_items[d]['KI Name'] .. '\"')
+							if number_of_merits >= key_items[d]['Merit Cost'] then
+								generate_ki_commands(x,d,e["Option Index"])
+								x = x + 1
+							else
+								log('You do not have enought merits to buy \"' .. key_items[d]['KI Name'] .. '\". Will not create command.')
+							end
+						end
+					end
+				end
+			end
+		end
+	else
+		delete_ki_commands()
+	end
+	
 end)
 
 function delete_commands()
 	if table.length(usable_commands) > 0 then
+		usable_commands = {}
+		log('You have zoned, commands have been removed!')
+	end
+end
+
+function delete_ki_commands()
+	if table.length(ki_commands) > 0 then
 		usable_commands = {}
 		log('You have zoned, commands have been removed!')
 	end
@@ -291,6 +450,13 @@ function generate_commands(number_of_command,ki_id)
 	log('Use command: \"'.. usable_commands[number_of_command]['command_name'] .. "\" to entre battlefield \"" .. key_items[ki_id]['KI Name'] .. "\"")
 end
 
+function generate_ki_commands(number_of_command,ki_id,opt_int)
+	ki_commands[number_of_command] = {}
+	ki_commands[number_of_command]['command_name'] = 'buy ' .. number_of_command
+	ki_commands[number_of_command]['KI ID'] = ki_id
+	ki_commands[number_of_command]["Option Index"] = ki_id
+	log('Use command: \"'.. ki_commands[number_of_command]['command_name'] .. "\" to buy KI \"" .. key_items[ki_id]['KI Name'] .. "\"")
+end
 
 
 

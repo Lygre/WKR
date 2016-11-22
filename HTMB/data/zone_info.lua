@@ -103,8 +103,8 @@ return {
 			},
 		},
 	},
-	[32] = { -- Sea Lions Den (Tenzen)
-		[2546] = {
+	[32] = { -- Sea Lions Den
+		[2546] = { -- (Tenzen)
 			[0x05B] = {
 				["Target"] = 16908419,
 				["Target Index"] = 131,
@@ -153,7 +153,7 @@ return {
 				-- },
 			},
 		},
-		[2987] = {
+		[2987] = { -- (Omega)
 			[0x05B] = {
 				["Target"] = 16908419,
 				["Target Index"] = 131,
