@@ -94,6 +94,8 @@ windower.register_event('addon command', function(...)
 				
 			end
 		end
+	else
+		log('Commands have not been generated yet')
 	end
 end)
 
@@ -190,6 +192,7 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 				["Target Index"]=pkt['me'],
 			})
 			activate_by_addon = false
+			delete_commands()
 			number_of_attempt = 1
 		end
 	end
@@ -254,16 +257,13 @@ windower.register_event('zone change',function(new_id,old_id)
 			if k ~= nil and type(k) == 'number' then
 				for i,d in pairs(ki_list) do
 					if d == k then
-						log('found key item')
+						log('Found KI ' .. d)
 						for j,e in pairs(key_items) do
 							if j == k then
-								log('matched key item')
 								for l,m in pairs(e['Zone ID']) do
 									if l == new_id then 
-										log('generating commands')
 										generate_commands(x,k)
 										x = x + 1
-										break
 									end
 								end
 							end
@@ -273,13 +273,16 @@ windower.register_event('zone change',function(new_id,old_id)
 			end	
 		end
 	else
-		if table.length(usable_commands) > 0 then
-			for k,v in pairs(usable_commands) do
-				usable_commands[v] = nil
-			end
-		end
+		delete_commands()
 	end
 end)
+
+function delete_commands()
+	if table.length(usable_commands) > 0 then
+		usable_commands = {}
+		log('You have zoned, commands have been removed!')
+	end
+end
 
 function generate_commands(number_of_command,ki_id)
 	usable_commands[number_of_command] = {}
