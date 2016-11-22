@@ -303,7 +303,7 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 		end
 	elseif id == 0x63 and data:byte(5) == 2 then
 		number_of_merits = data:byte(11)%128
-		log('Total merit update. Total: ' .. number_of_merits)
+		--log('Total merit update. Total: ' .. number_of_merits)
 	end
 end)
 
@@ -398,6 +398,10 @@ windower.register_event('zone change',function(new_id,old_id)
 					table.insert(current_zone_kis, k)
 				end
 			end
+		end
+		if table.length(current_zone_kis) == 0 then
+			log('You have no KI\'s for this zone.')
+			return
 		end
 		for k, v in pairs(current_zone_kis) do
 			generate_commands(k,v)
