@@ -264,6 +264,14 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			-- if unknow = 1 then room 1 is free, for farvour confirmation we check co-ordinates against ones we sent
 			if packet['_unknown1'] == 1 then
 				log('Confirmed BCNM room '.. number_of_attempt ..' is open, waiting for 0x055 packet')
+				if x == zones[current_zone][current_ki_id]['0x05C'][number_of_attempt]['X'] and y == zones[current_zone][current_ki_id]['0x05C'][number_of_attempt]['Y'] and z == zones[current_zone][current_ki_id]['0x05C'][number_of_attempt]['Z'] then
+					log('Entry co-ordinates match to 0x065 packet')
+				else
+					log('Entry co-ordinates did not match to 0x065 packet, logging!')
+					log(' X : ' .. x)
+					log(' Z : ' .. z)
+					log(' Y : ' .. y)
+				end
 			else
 			-- failed to entre room 1 so we cycle to room 2 then room 3
 				log('BCNM Room ' .. number_of_attempt .. ' is full. Attempting next BCNM room!')
