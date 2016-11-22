@@ -75,6 +75,9 @@ return {
 		['Zone ID'] = {
 			[32] = "Sealion's Den",
 		},
+		["Option Index"] = {
+			[1] = 2562,
+		},
 	},
 	[2595] = {
 		['KI Name'] = 'Head Wind phantom gem',
@@ -88,6 +91,10 @@ return {
 		['Merit Cost'] = 15,
 		['Zone ID'] = {
 			[32] = "Sealion's Den",
+		},
+		["Option Index"] = {
+			[1] = 259,
+			[2] = 4610,
 		},
 	},
 	[2988] = {
@@ -121,6 +128,9 @@ return {
 			[209] = "Cloister of Tremors",
 			[211] = "Cloister of Tides",
 			[207] = "Cloister of Flames",
+		},
+		["Option Index"] = {
+			[1] = 3586,
 		},
 	},
 	[2923] = {

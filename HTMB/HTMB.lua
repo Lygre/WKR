@@ -41,6 +41,9 @@ packets = require('packets')
 require('chat')
 res = require('resources')
 
+-- packets to track
+-- pv t i 0x032|0x034|0x055|0x065 o 0x016|0x05b|0x05c
+
 function load_zones()
 
 	local f = io.open(windower.addon_path..'data/zone_info.lua','r')
@@ -92,7 +95,7 @@ windower.register_event('addon command', function(...)
 	local cmd = args[1]
 	local lcmd = cmd:lower()
 	
-	if table.length(usable_commands) > 0 then 
+	if table.length(usable_commands) > 0 then
 		for k,v in pairs(usable_commands) do
 			if v['command_name']:contains(lcmd) and v['command_name']:contains(args[2]) then
 				player = windower.ffxi.get_player()
@@ -106,7 +109,8 @@ windower.register_event('addon command', function(...)
 				
 			end
 		end
-	elseif table.length(ki_commands) > 0 then 
+	end
+	if table.length(ki_commands) > 0 then 
 		for k,v in pairs(ki_commands) do
 			if v['command_name']:contains(lcmd) and v['command_name']:contains(args[2]) then
 				player = windower.ffxi.get_player()
@@ -119,49 +123,14 @@ windower.register_event('addon command', function(...)
 				
 			end
 		end
-	elseif lcmd == 'force' then
+	end
+	if lcmd == 'force' then
 		log('Force checking ki count')
+		current_zone = windower.ffxi.get_info().zone
 		local packet = packets.new('outgoing', 0x061, {})
 		packets.inject(packet)
 		coroutine.sleep(1)
-		local exit_loop = false
-		local x = 1
-		local ki_list = windower.ffxi.get_key_items()
-		for k,v in pairs(npcs[current_zone]) do
-			if v ~= nil and type(v) == 'table' and k == 'KI ID' then
-				local count = 2
-				for j,e in pairs(v) do
-					for i,d in pairs(ki_list) do
-					-- d = ki id
-						--log('entered 3, ki= ' .. j .. ' ' .. d .. ' tl: ' .. table.length(ki_list) .. ' count: ' .. count)
-						if j ~= d then
-							count = count + 1
-						elseif j == d then 
-							break
-						end
-					end
-					
-					if table.length(ki_list) < count then
-						log('Found missing KI \"' .. key_items[j]['KI Name'] .. '\"')
-						if number_of_merits >= key_items[j]['Merit Cost'] then
-							generate_ki_commands(x,j,e["Option Index"])
-							x = x + 1
-						else
-							log('You do not have enought merits to buy \"' .. key_items[j]['KI Name'] .. '\". Will not create command.')
-						end
-					end
-				end
-				exit_loop = true
-				break
-			end
-		end
-		if exit_loop then
-			log('You have all available KI\'s')
-		else
-			log('You are not in a zone with a KI npc!')
-		end
-	else
-		log('Commands have not been generated yet')
+		find_missing_kis()
 	end
 end)
 
@@ -256,21 +225,28 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 		if activate_by_addon_npc == true then
 			log('packet 0x034 received (menu entry packet for ki buying)')
 			-- itterate through ki id's for the option index associated
-			for k, v in pairs(npcs[current_zone]['KI ID']) do
+			for k, v in pairs(key_items) do -- key_items
 				if k == current_ki_id then
-					log('Sending first 0x05B packet (menu choice)')
-					create_0x05B_ki(current_zone,v["Option Index"],true,current_ki_id)
-					log('Sending second 0x05B packet (menu choice)')
-					create_0x05B_ki(current_zone,v["Option Index"],false,current_ki_id)
-					local packet = packets.new('outgoing', 0x016, {
-						["Target Index"]=pkt['me'],
-					})
-					activate_by_addon_npc = false
-					packets.inject(packet)
-					log('KI \"' .. v['KI Name'] .. '\" has been baught!' )
-					coroutine.sleep(1)
-					windower.send_command('htmb force')
-					break
+					for i, j in pairs(v) do
+						if i ==  "Option Index" then
+							log('Sending first 0x05B packet (menu choice)')
+							create_0x05B_ki(current_zone,j[1],true,current_ki_id)
+							if v["Option Index"][2] then
+								log('Sending second 0x05B packet (switch page in menu)')
+								create_0x05B_ki(current_zone,j[2],true,current_ki_id)
+								log('Sending third 0x05B packet (menu choice)')
+								create_0x05B_ki(current_zone,j[2],false,current_ki_id)
+							else
+								log('Sending second 0x05B packet (menu choice)')
+								create_0x05B_ki(current_zone,j[1],false,current_ki_id)
+							end
+							local packet = packets.new('outgoing', 0x016, {
+								["Target Index"]=pkt['me'],
+							})
+							packets.inject(packet)		
+							break
+						end
+					end	
 				end
 			end
 		end
@@ -308,6 +284,13 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			activate_by_addon = false
 			delete_commands()
 			number_of_attempt = 1
+		end
+		if activate_by_addon_npc == true then
+			activate_by_addon_npc = false
+			log('KI \"' .. npcs[current_zone]['KI ID'][current_ki_id]['KI Name'] .. '\" has been baught!' )
+			coroutine.sleep(1)
+			delete_ki_commands()
+			windower.send_command('htmb force')
 		end
 	elseif id == 0x63 and data:byte(5) == 2 then
 		number_of_merits = data:byte(11)%128
@@ -410,29 +393,7 @@ windower.register_event('zone change',function(new_id,old_id)
 		log('You have entered an area with a KI npc.')
 		coroutine.sleep(10)
 		log("Checking for missing KI's!")
-		player = windower.ffxi.get_player()
-		local x = 1
-		local ki_list = windower.ffxi.get_key_items()
-		for k,v in pairs(npcs[new_id]) do
-			if v ~= nil and type(v) == 'table' and k == 'KI ID' then
-				for j,e in pairs(v) do
-					for i,d in pairs(ki_list) do
-					-- d = ki id
-						if j == d then
-							log('Found missing KI \"' .. key_items[d]['KI Name'] .. '\"')
-							if number_of_merits >= key_items[d]['Merit Cost'] then
-								generate_ki_commands(x,d,e["Option Index"])
-								x = x + 1
-							else
-								log('You do not have enought merits to buy \"' .. key_items[d]['KI Name'] .. '\". Will not create command.')
-							end
-						end
-					end
-				end
-			end
-		end
-	else
-		delete_ki_commands()
+		find_missing_kis()
 	end
 	
 end)
@@ -446,7 +407,7 @@ end
 
 function delete_ki_commands()
 	if table.length(ki_commands) > 0 then
-		usable_commands = {}
+		ki_commands = {}
 		log('You have zoned, commands have been removed!')
 	end
 end
@@ -458,15 +419,60 @@ function generate_commands(number_of_command,ki_id)
 	log('Use command: \"'.. usable_commands[number_of_command]['command_name'] .. "\" to entre battlefield \"" .. key_items[ki_id]['KI Name'] .. "\"")
 end
 
-function generate_ki_commands(number_of_command,ki_id,opt_int)
+function generate_ki_commands(number_of_command,ki_id)
 	ki_commands[number_of_command] = {}
 	ki_commands[number_of_command]['command_name'] = 'buy ' .. number_of_command
 	ki_commands[number_of_command]['KI ID'] = ki_id
-	ki_commands[number_of_command]["Option Index"] = ki_id
 	log('Use command: \"'.. ki_commands[number_of_command]['command_name'] .. "\" to buy KI \"" .. key_items[ki_id]['KI Name'] .. "\"")
 end
 
+function find_missing_kis()
 
+	local exit_loop = false
+	local toons_kis = windower.ffxi.get_key_items()
+	local matching_kis = {}
+	local missing_kis = {}
+	
+	-- ki's you do have
+	for i,d in pairs(toons_kis) do
+		-- i = table index
+		-- d = ki id
+		-- ki's you need
+		for k, v in pairs(key_items) do
+			-- k = ki id
+			-- v = table contents
+			if d == k then
+				table.insert(matching_kis, d)
+			end
+		end
+	end
+	if table.length(matching_kis) == 20 then
+		log('You already posess all High-tier mission battlefield KI\'s. Will not create commands.')
+		return
+	end
+	for k, v in pairs(key_items) do
+		-- k = ki id
+		-- v = table contents
+		if not table.contains(matching_kis, k) then
+			table.insert(missing_kis, k)
+			log('Found missing KI \"' .. key_items[k]['KI Name'] .. '\"')
+		end
+	end
+	
+	for k, v in pairs(missing_kis) do
+		if number_of_merits >= key_items[v]['Merit Cost'] then
+			for i, j in pairs(key_items) do
+				if table.contains(j, "Option Index") then
+					generate_ki_commands(k,v)
+				else
+					log('Lack of packet information to buy KI: \"' .. i['KI Name'] .. '\". Will not create command.')
+				end
+			end
+		else
+			log('You do not have enought merits to buy \"' .. key_items[v]['KI Name'] .. '\". Will not create command.')
+		end
+	end
+end
 
 
 
