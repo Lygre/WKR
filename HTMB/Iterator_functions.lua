@@ -46,10 +46,10 @@ function find_missing_kis(zone_id)
 					end
 				end
 				if ki == false then
-					warning('Lack of packet information to buy KI: \"' .. key_items[v]['KI Name'] .. '\". Will not create command.')
+					warning('Lack of packet information to buy KI: \"' .. (key_items[v]['KI Name']):color(215) .. '\". Will not create command.')
 				end
 			else
-				notice('You do not have enought merits to buy \"' .. key_items[v]['KI Name'] .. '\". Will not create command.')
+				notice('You do not have enought merits to buy \"' .. (key_items[v]['KI Name']):color(215) .. '\". Will not create command.')
 			end
 		end
 	else
@@ -90,7 +90,7 @@ function check_zone_for_battlefield(zone_id)
 			return
 		end
 		for k, v in pairs(current_zone_kis) do
-			generate_commands(k,v)
+			generate_commands(k,v,zone_id)
 		end
 	else
 		error('Not in a BCNM zone!')

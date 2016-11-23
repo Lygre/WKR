@@ -118,7 +118,7 @@ windower.register_event('addon command', function(...)
 	end
 	if table.length(ki_commands) > 0 then 
 		for k,v in pairs(ki_commands) do
-			if v['command_name']:contains(lcmd) and v['command_name']:contains(args[2]) then
+			if v['command_name']:contains(args[1]) and (v['command_name']:contains(args[2]) or v['command_name_nickname']:contains(args[2])) then
 				player = windower.ffxi.get_player()
 				current_zone = windower.ffxi.get_info().zone
 				pkt = validate()
@@ -126,7 +126,8 @@ windower.register_event('addon command', function(...)
 				activate_by_addon_npc = true
 				current_ki_id = v['KI ID']
 				poke_npc(current_zone,v['KI ID'])
-				
+			else
+				error('You have entred an incorrect command!')
 			end
 		end
 	end
@@ -234,7 +235,7 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 		
 	elseif id == 0x055 then -- change in player KI data confirming entry
 		if activate_by_addon == true then
-			notice('Confirmed entry to BCNM room ' .. number_of_attempt .. ' !')
+			notice('Confirmed entry to BCNM room ' .. (number_of_attempt - 1) .. ' !')
 			create_0x05B(current_zone,2,false)
 			local packet = packets.new('outgoing', 0x016, {
 				["Target Index"]=pkt['me'],
@@ -255,7 +256,7 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			
 			pkt = {}
 			activate_by_addon_npc = false
-			notice('KI \"' .. key_items[current_ki_id]['KI Name'] .. '\" has been baught!' )
+			notice('KI \"' .. (key_items[current_ki_id]['KI Name']):color(215) .. '\" has been baught!' )
 			delete_ki_commands()
 			
 			coroutine.sleep(3)
@@ -275,14 +276,32 @@ windower.register_event('zone change',function(new_id,old_id)
 	if first_poke and current_zone ~= new_id then
 		first_poke = false
 		activate_by_addon = false
-		log('You have left the BCNM area!')
+		log('You have left the BCNM Entry area!')
 	elseif zones[new_id] then
-		log('You have zoned into a BCNM area.')
-		coroutine.sleep(10)
+		log('You have zoned into a BCNM Entry area. Waiting for player data...')
+		coroutine.sleep(2)
+		log('...')
+		coroutine.sleep(2)
+		log('...')
+		coroutine.sleep(2)
+		log('...')
+		coroutine.sleep(2)
+		log('...')
+		coroutine.sleep(2)
+		log('...')
 		check_zone_for_battlefield(new_id)
 	elseif npcs[new_id] then
-		log('You have zoned into an area with a KI npc.')
-		coroutine.sleep(10)
+		log('You have zoned into an area with a KI npc. Waiting for player data...')
+		coroutine.sleep(2)
+		log('...')
+		coroutine.sleep(2)
+		log('...')
+		coroutine.sleep(2)
+		log('...')
+		coroutine.sleep(2)
+		log('...')
+		coroutine.sleep(2)
+		log('...')
 		notice("Checking for missing KI's!")
 		forced_update = true
 		find_missing_kis(new_id)
