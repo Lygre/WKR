@@ -41,6 +41,10 @@ packets = require('packets')
 require('chat')
 res = require('resources')
 
+require 'Packet_Injection'
+require 'Commad_Generation'
+require 'Iterator_functions'
+
 -- packets to track
 -- pv t i 0x032|0x034|0x055|0x065 o 0x016|0x05b|0x05c
 -- pv l f both 0x032 0x034 0x055 0x065 0x016 0x05b 0x05c
@@ -75,21 +79,21 @@ function load_NPCs()
 	return t
 end
 
-local zones = load_zones()
-local key_items = load_KIs()
-local npcs = load_NPCs()
-local player = windower.ffxi.get_player()
-local number_of_merits = 0
-local current_zone = windower.ffxi.get_info().zone
-local pkt = {}
-local first_poke = true
-local number_of_attempt = 1
-local activate_by_addon = false
-local activate_by_addon_npc = false
-local usable_commands = {}
-local ki_commands = {}
-local current_ki_id = 0
-local forced_update = false
+zones = load_zones()
+key_items = load_KIs()
+npcs = load_NPCs()
+player = windower.ffxi.get_player()
+number_of_merits = 0
+current_zone = windower.ffxi.get_info().zone
+pkt = {}
+first_poke = true
+number_of_attempt = 1
+activate_by_addon = false
+activate_by_addon_npc = false
+usable_commands = {}
+ki_commands = {}
+current_ki_id = 0
+forced_update = false
 
 windower.register_event('addon command', function(...)
 
@@ -130,11 +134,11 @@ windower.register_event('addon command', function(...)
 		warning('Force checking ki count AND battlefields in zone')
 		current_zone = windower.ffxi.get_info().zone
 		forced_update = true
-		check_zone_for_battlefield()
+		check_zone_for_battlefield(current_zone)
 		local packet = packets.new('outgoing', 0x061, {})
 		packets.inject(packet)
 		coroutine.sleep(2)
-		find_missing_kis()
+		find_missing_kis(current_zone)
 	end
 end)
 
@@ -147,61 +151,6 @@ function validate()
 		end
 	end
 	return result 
-end
-
--- now requires a valid zone number that exists in the zone_info.lua and also requires to be within range of the BCNM entrance
-function poke_warp(zone_number,ki_id)
-
-	local distance = 0
-	if windower.ffxi.get_mob_by_index(zones[zone_number][ki_id]['0x05B']["Target Index"]) then
-		distance = windower.ffxi.get_mob_by_index(zones[zone_number][ki_id]['0x05B']["Target Index"]).distance
-		-- turn distance into yalms to match the distance addon
-		distance = distance:sqrt()
-		if distance > 0 and distance < 5 then
-			local packet = packets.new('outgoing', 0x01A, {
-				["Target"]=zones[zone_number][ki_id]['0x05B']["Target"],
-				["Target Index"]=zones[zone_number][ki_id]['0x05B']["Target Index"],
-				["Category"]=0,
-				["Param"]=0,
-				["_unknown1"]=0})
-			first_poke = true
-			notice('Attempting to entre BCNM, sending poke!')
-			packets.inject(packet)
-		else
-			activate_by_addon = false
-			error('You are too far away from the entrance!')
-		end
-	else
-		activate_by_addon = false
-		error('Cureently no information regarding High-Tier Mission Battlefields in this zone')
-	end
-end
-
--- now requires a valid zone number that exists in the zone_info.lua and also requires to be within range of the BCNM entrance
-function poke_npc(zone_number,ki_id)
-
-	local distance = 0
-	if windower.ffxi.get_mob_by_index(npcs[zone_number]['NPC Index']) then
-		distance = windower.ffxi.get_mob_by_index(npcs[zone_number]['NPC Index']).distance
-		-- turn distance into yalms to match the distance addon
-		distance = distance:sqrt()
-		if distance > 0 and distance < 5 then
-			local packet = packets.new('outgoing', 0x01A, {
-				["Target"]=npcs[zone_number]['NPC'],
-				["Target Index"]=npcs[zone_number]['NPC Index'],
-				["Category"]=0,
-				["Param"]=0,
-				["_unknown1"]=0})
-			notice('Attempting to buy KI, sending poke!')
-			packets.inject(packet)
-		else
-			activate_by_addon_npc = false
-			error('You are too far away from the NPC!')
-		end
-	else
-		activate_by_addon_npc = false
-		error('Cureently no information regarding KI NPC\'s in this zone')
-	end
 end
 
 -- parsing of relevant incoming packets to perform actions
@@ -321,73 +270,6 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 	end
 end)
 
--- function to inject anomylous packets associated with first time click on BCNM
-function inject_anomylus_packets(zone_number)
-	
-	for k,v in pairs(zones[zone_number][current_ki_id]['0x016']) do
-		if v ~= nil and type(v) == 'number' then
-			local packet = packets.new('outgoing', 0x016, {
-				["Target Index"]=v,
-			})
-			packets.inject(packet)
-		end	
-	end
-
-end
-
--- function to send menu choice bassed on zone id
-function create_0x05B(zone_number,option_index,message)
-
-	local info = zones[zone_number][current_ki_id]['0x05B']
-	
-	local packet = packets.new('outgoing', 0x05B)
-		packet["Target"]=			info["Target"]
-		packet["Option Index"]=		info["Option Index"][option_index]
-		packet["_unknown1"]=		info["_unknown1"]
-		packet["Target Index"]=		info["Target Index"]
-		packet["Menu ID"]=			info["Menu ID"]
-		packet["Zone"]=				zone_number
-		packet["Automated Message"]=message
-		packet["_unknown2"]=		0
-	packets.inject(packet)
-	
-end
-
--- function to send menu choice to buy ki bassed on zone id
--- create_0x05B_ki(current_zone,j[1],true,current_ki_id)
-function create_0x05B_ki(zone_number,option_index,message,ki_id)
-
-	local info = npcs[zone_number]['0x05B']
-	
-	local packet = packets.new('outgoing', 0x05B)
-		packet["Target"]=			info["Target"]
-		packet["Option Index"]=		key_items[ki_id]["Option Index"][option_index]
-		packet["_unknown1"]=		info["_unknown1"]
-		packet["Target Index"]=		info["Target Index"]
-		packet["Menu ID"]=			info["Menu ID"]
-		packet["Zone"]=				zone_number
-		packet["Automated Message"]=message
-		packet["_unknown2"]=		0
-	packets.inject(packet)
-	
-end
-
--- function to request entry to BCNM bassed on the current zone id
-function create_0x05C(packet_table)
-
-	local packet = packets.new('outgoing', 0x05C)
-		packet["X"]= 			packet_table["X"]
-		packet["Z"]=			packet_table["Z"]
-		packet["Y"]= 			packet_table["Y"]
-		packet["Target ID"]=	packet_table["Target ID"]
-		packet["Target Index"]=	packet_table["Target Index"]
-		packet["_unknown1"]=	packet_table["_unknown1"]
-		packet["_unknown2"]=	packet_table["_unknown2"]
-		packet["_unknown3"]=	packet_table["_unknown3"]
-	packets.inject(packet)
-	
-end
-
 -- event to track zone change and reset first time poke
 windower.register_event('zone change',function(new_id,old_id)
 	if first_poke and current_zone ~= new_id then
@@ -397,143 +279,19 @@ windower.register_event('zone change',function(new_id,old_id)
 	elseif zones[new_id] then
 		log('You have zoned into a BCNM area.')
 		coroutine.sleep(10)
-		check_zone_for_battlefield()
+		check_zone_for_battlefield(new_id)
 	elseif npcs[new_id] then
 		log('You have zoned into an area with a KI npc.')
 		coroutine.sleep(10)
 		notice("Checking for missing KI's!")
 		forced_update = true
-		find_missing_kis()
+		find_missing_kis(new_id)
 	else
 		delete_commands()
 	end
 	
 end)
 
-function delete_commands()
-	if table.length(usable_commands) > 0 then
-		usable_commands = {}
-		warning('You have zoned, commands have been removed!')
-	end
-end
 
-function delete_ki_commands()
-	if table.length(ki_commands) > 0 then
-		ki_commands = {}
-		warning('You have baught a KI, Reseting commands!')
-	end
-end
-
-function generate_commands(number_of_command,ki_id)
-	usable_commands[number_of_command] = {}
-	usable_commands[number_of_command]['command_name'] = 'entre ' .. number_of_command
-	usable_commands[number_of_command]['KI ID'] = ki_id
-	notice('Use command: \"'.. usable_commands[number_of_command]['command_name'] .. "\" to entre battlefield \"" .. key_items[ki_id]['KI Name'] .. "\"")
-end
-
-function generate_ki_commands(number_of_command,ki_id)
-	ki_commands[number_of_command] = {}
-	ki_commands[number_of_command]['command_name'] = 'buy ' .. number_of_command
-	ki_commands[number_of_command]['KI ID'] = ki_id
-	notice('Use command: \"'.. ki_commands[number_of_command]['command_name'] .. "\" to buy KI \"" .. key_items[ki_id]['KI Name'] .. "\"")
-end
-
-function find_missing_kis()
-	
-	if npcs[current_zone] then
-		local toons_kis = windower.ffxi.get_key_items()
-		local matching_kis = {}
-		local missing_kis = {}
-		
-		-- ki's you do have
-		for i,d in pairs(toons_kis) do
-			-- i = table index
-			-- d = ki id
-			-- ki's you need
-			for k, v in pairs(key_items) do
-				-- k = ki id
-				-- v = table contents
-				if d == k then
-					table.insert(matching_kis, d)
-				end
-			end
-		end
-		if table.length(matching_kis) == 20 then
-			notice('You already posess all High-tier mission battlefield KI\'s. Will not create commands.')
-			return
-		end
-		for k, v in pairs(key_items) do
-			-- k = ki id
-			-- v = table contents
-			if not table.contains(matching_kis, k) then
-				table.insert(missing_kis, k)
-				log('Found missing KI \"' .. key_items[k]['KI Name'] .. '\"')
-			end
-		end
-		
-		local buy_number = 1
-		for k, v in pairs(missing_kis) do
-			local ki = false
-			if number_of_merits >= key_items[v]['Merit Cost'] then
-				for i, j in pairs(key_items[v]) do
-					if i == "Option Index" then
-						generate_ki_commands(buy_number,v)
-						buy_number = buy_number + 1
-						ki = true
-						break
-					end
-				end
-				if ki == false then
-					warning('Lack of packet information to buy KI: \"' .. key_items[v]['KI Name'] .. '\". Will not create command.')
-				end
-			else
-				notice('You do not have enought merits to buy \"' .. key_items[v]['KI Name'] .. '\". Will not create command.')
-			end
-		end
-	else
-		error('You are not in a zone with an available KI NPC!')
-	end
-end
-
-function check_zone_for_battlefield()
-	if zones[current_zone] then
-		log('Checking potential battlefields!')
-		local toons_kis = windower.ffxi.get_key_items()
-		local matching_kis = {}
-		local current_zone_kis = {}
-		-- ki's you do have
-		for i,d in pairs(toons_kis) do
-			-- i = table index
-			-- d = ki id
-			-- ki's you need
-			for k, v in pairs(key_items) do
-				-- k = ki id
-				-- v = table contents
-				if d == k then
-					table.insert(matching_kis, d)
-				end
-			end
-		end
-		for k,v in pairs(zones[current_zone]) do
-			if k ~= nil and type(k) == 'number' then
-				-- k = ki id
-				-- v = table contents
-				if table.contains(matching_kis, k) then
-					table.insert(current_zone_kis, k)
-				end
-			end
-		end
-		if table.length(current_zone_kis) == 0 then
-			warning('You have no KI\'s for this zone.')
-			return
-		end
-		for k, v in pairs(current_zone_kis) do
-			generate_commands(k,v)
-		end
-	else
-		error('Not in a BCNM zone!')
-	end
-
-end
 
 
