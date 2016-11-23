@@ -123,14 +123,25 @@ return {
 			[1] = 2562,
 		},
 	},
-	[2595] = {
-		['KI Name'] = 'Head Wind phantom gem',
-		['Nickname'] = 'Shikaree',
+	[2556] = {
+		['KI Name'] = 'Puppet In Peril phantom gem',
+		['Nickname'] = 'Puppet',
 		['Merit Cost'] = 10,
 		['Zone ID'] = {
-			[8] = {
-				['Zone name'] = "Boneyard Gully",
-				['BF name'] = "★Head Wind",
+			[67] = {
+				['Zone name'] = "Jade Sepulcher",
+				['BF name'] = "★Puppet in Peril",
+			},
+		},
+	},
+	[2557] = {
+		['KI Name'] = 'Legacy phantom gem',
+		['Nickname'] = 'Gessho',
+		['Merit Cost'] = 10,
+		['Zone ID'] = {
+			[57] = {
+				['Zone name'] = "Talacca Cove",
+				['BF name'] = "★Legacy of the Lost",
 			},
 		},
 	},
@@ -160,25 +171,14 @@ return {
 			},
 		},
 	},
-	[2556] = {
-		['KI Name'] = 'Puppet In Peril phantom gem',
-		['Nickname'] = 'Puppet',
+	[2595] = {
+		['KI Name'] = 'Head Wind phantom gem',
+		['Nickname'] = 'Shikaree',
 		['Merit Cost'] = 10,
 		['Zone ID'] = {
-			[67] = {
-				['Zone name'] = "Jade Sepulcher",
-				['BF name'] = "★Puppet in Peril",
-			},
-		},
-	},
-	[2557] = {
-		['KI Name'] = 'Legacy phantom gem',
-		['Nickname'] = 'Gessho',
-		['Merit Cost'] = 10,
-		['Zone ID'] = {
-			[57] = {
-				['Zone name'] = "Talacca Cove",
-				['BF name'] = "★Legacy of the Lost",
+			[8] = {
+				['Zone name'] = "Boneyard Gully",
+				['BF name'] = "★Head Wind",
 			},
 		},
 	},
