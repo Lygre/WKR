@@ -118,7 +118,7 @@ windower.register_event('addon command', function(...)
 	end
 	if table.length(ki_commands) > 0 then 
 		for k,v in pairs(ki_commands) do
-			if v['command_name']:contains(args[1]) and (v['command_name']:contains(args[2]) or v['command_name_nickname']:contains(args[2])) then
+			if (v['command_name']:contains(args[1]) and v['command_name']:contains(args[2])) or (v['command_name']:contains(args[1]) and v['command_name_nickname']:contains(args[2])) then
 				player = windower.ffxi.get_player()
 				current_zone = windower.ffxi.get_info().zone
 				pkt = validate()

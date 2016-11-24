@@ -9,6 +9,9 @@ return {
 				['BF name'] = "★The Shadow Lord Battle",
 			},
 		},
+		["Option Index"] = {
+			[1] = 2,
+		},
 	},
 	[2469] = {
 		['KI Name'] = 'Celestial Nexus phantom gem',
@@ -31,6 +34,9 @@ return {
 				['BF name'] = "★Return to Delkfutt's Tower",
 			},
 		},
+		["Option Index"] = {
+			[1] = 258,
+		},
 	},
 	[2471] = {
 		['KI Name'] = 'Phantom Gem of Apathy',
@@ -41,6 +47,9 @@ return {
 				['Zone name'] = "La'Loff Amphitheater",
 				['BF name'] = "★Ark Angels (1)",
 			},
+		},
+		["Option Index"] = {
+			[1] = 770,
 		},
 	},
 	[2472] = {
@@ -108,6 +117,9 @@ return {
 				['BF name'] = "★The Savage",
 			},
 		},
+		["Option Index"] = {
+			[1] = 2306,
+		},
 	},
 	[2546] = {
 		['KI Name'] = "Warrior's Path phantom gem",
@@ -169,6 +181,10 @@ return {
 				['Zone name'] = "Empyreal Paradox",
 				['BF name'] = "★Dawn",
 			},
+		},
+		["Option Index"] = {
+			[1] = 259,
+			[2] = 4866,
 		},
 	},
 	[2595] = {
