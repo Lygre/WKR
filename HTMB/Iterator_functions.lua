@@ -92,6 +92,7 @@ function check_zone_for_battlefield(zone_id)
 		for k, v in pairs(current_zone_kis) do
 			generate_commands(k,v,zone_id)
 		end
+		first_poke = true
 	else
 		error('Not in a BCNM zone!')
 	end

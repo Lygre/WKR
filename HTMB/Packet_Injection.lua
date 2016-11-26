@@ -54,6 +54,37 @@ function poke_npc(zone_number,ki_id)
 	end
 end
 
+function poke_warp_HP(current_zone)
+	local distance = 0
+	if HPs[current_zone] then
+		for k, v in pairs(HPs[current_zone]) do
+			if type(v) == 'table' and table.length(v) > 0 then
+				if windower.ffxi.get_mob_by_index(v["Target Index"]) then
+					distance = windower.ffxi.get_mob_by_index(v["Target Index"]).distance
+					distance = distance:sqrt()
+					if distance > 0 and distance < 5 then
+						current_HP_number = k
+						local packet = packets.new('outgoing', 0x01A, {
+							["Target"]=v["Target"],
+							["Target Index"]=v["Target Index"],
+							["Category"]=0,
+							["Param"]=0,
+							["_unknown1"]=0})
+						notice('Attempting to poke '.. windower.ffxi.get_mob_by_index(v["Target Index"]).name ..'!')
+						packets.inject(packet)
+						return true
+					else
+						activate_by_addon_npc = false
+						error('You are too far away from the Home Point!')
+					end
+				end
+			end	
+		end
+	else
+		error('You have no data for Home Points in this zone')
+	end
+end
+
 -- function to inject anomylous packets associated with first time click on BCNM
 function inject_anomylus_packets(zone_number)
 	
@@ -98,6 +129,23 @@ function create_0x05B_ki(zone_number,option_index,message,ki_id)
 		packet["_unknown1"]=		info["_unknown1"]
 		packet["Target Index"]=		info["Target Index"]
 		packet["Menu ID"]=			info["Menu ID"]
+		packet["Zone"]=				zone_number
+		packet["Automated Message"]=message
+		packet["_unknown2"]=		0
+	packets.inject(packet)
+	
+end
+
+function create_0x05B_HP(zone_number,option_index,message,HP_number,unknown_number)
+
+	local info = HPs[zone_number][HP_number]
+	
+	local packet = packets.new('outgoing', 0x05B)
+		packet["Target"]=			info["Target"]
+		packet["Option Index"]=		info["Option Index"][option_index]
+		packet["_unknown1"]=		info["_unknown1"][unknown_number]
+		packet["Target Index"]=		info["Target Index"]
+		packet["Menu ID"]=			8701
 		packet["Zone"]=				zone_number
 		packet["Automated Message"]=message
 		packet["_unknown2"]=		0

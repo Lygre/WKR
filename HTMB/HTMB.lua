@@ -79,17 +79,30 @@ function load_NPCs()
 	return t
 end
 
+function load_HPs()
+
+	local f = io.open(windower.addon_path..'data/HP_info.lua','r')
+	local t = f:read("*all")
+	t = assert(loadstring(t))()
+	f:close()
+	
+	return t
+end
+
 zones = load_zones()
 key_items = load_KIs()
 npcs = load_NPCs()
+HPs = load_HPs()
 player = windower.ffxi.get_player()
 number_of_merits = 0
 current_zone = windower.ffxi.get_info().zone
+current_HP_number = 0
 pkt = {}
-first_poke = true
+first_poke = false
 number_of_attempt = 1
 activate_by_addon = false
 activate_by_addon_npc = false
+activate_by_addon_HP = false
 usable_commands = {}
 ki_commands = {}
 current_ki_id = 0
@@ -117,8 +130,9 @@ windower.register_event('addon command', function(...)
 		end
 	end
 	if table.length(ki_commands) > 0 then 
+		local found = false
 		for k,v in pairs(ki_commands) do
-			if (v['command_name']:contains(args[1]) and v['command_name']:contains(args[2])) or (v['command_name']:contains(args[1]) and v['command_name_nickname']:contains(args[2])) then
+			if (v['command_name']:contains(args[1]) and v['command_name']:contains(args[2])) or (v['command_name_nickname']:contains(args[1]) and v['command_name_nickname']:contains(args[2])) then
 				player = windower.ffxi.get_player()
 				current_zone = windower.ffxi.get_info().zone
 				pkt = validate()
@@ -126,10 +140,12 @@ windower.register_event('addon command', function(...)
 				activate_by_addon_npc = true
 				current_ki_id = v['KI ID']
 				poke_npc(current_zone,v['KI ID'])
-			else
-				error('You have entred an incorrect command!')
-			end
+				found = true
+			end	
 		end
+		if found == false then
+			error('You have entred an incorrect command!')
+		end		
 	end
 	if lcmd == 'force' then
 		warning('Force checking ki count AND battlefields in zone')
@@ -138,8 +154,19 @@ windower.register_event('addon command', function(...)
 		check_zone_for_battlefield(current_zone)
 		local packet = packets.new('outgoing', 0x061, {})
 		packets.inject(packet)
-		coroutine.sleep(2)
+		coroutine.sleep(1.5)
 		find_missing_kis(current_zone)
+	end
+	if lcmd == 'crystal' then
+		player = windower.ffxi.get_player()
+		current_zone = windower.ffxi.get_info().zone
+		pkt = validate()
+		activate_by_addon_HP = true
+		poke_warp_HP(current_zone)
+		if args[2] == 'all' then
+			coroutine.sleep(1)
+			windower.send_command('send @others htmb crystal')
+		end
 	end
 end)
 
@@ -168,6 +195,7 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 			--if first time poking the door send the assosiated junk 0x016 packets
 			if first_poke then
 				inject_anomylus_packets(current_zone)
+				first_poke = false
 			end
 			
 			-- send menu choice for VD 
@@ -202,7 +230,24 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 					end		
 				end
 			end
+		elseif activate_by_addon_HP == true and current_HP_number > 0 then
+			-- create_0x05B_HP(zone_number,option_index,message,HP_number,unknown_number)
+			log('Sending 1st 0x05B packet')
+			create_0x05B_HP(current_zone,1,true,current_HP_number,1)
+			log('Sending 2nd 0x05B packet')
+			create_0x05B_HP(current_zone,2,true,current_HP_number,2)
+			log('Sending 3rd 0x05B packet')
+			create_0x05B_HP(current_zone,3,false,current_HP_number,3)
 			
+			local packet = packets.new('outgoing', 0x016, {
+			["Target Index"]=pkt['me'],
+			})
+			packets.inject(packet)
+			
+			pkt = {}
+			activate_by_addon_HP = false
+			current_HP_number = 0
+			return true
 		end
 		
 	elseif id == 0x065 then -- confirmation packet of available BCNM room
@@ -215,9 +260,9 @@ windower.register_event('incoming chunk',function(id,data,modified,injected,bloc
 				log('Confirmed BCNM room '.. (number_of_attempt - 1) ..' is open, waiting for 0x055 packet')
 			else
 			-- failed to entre room 1 so we cycle to room 2 then room 3
-				log('BCNM Room ' .. number_of_attempt .. ' is full. Attempting next BCNM room!')
+				log('BCNM Room ' .. (number_of_attempt - 1) .. ' is full. Attempting next BCNM room!')
 				if number_of_attempt < 4 then
-					create_0x05C(zones[current_zone][current_ki_id]['0x05C'][(number_of_attempt - 1)])
+					create_0x05C(zones[current_zone][current_ki_id]['0x05C'][number_of_attempt])
 					number_of_attempt = number_of_attempt + 1
 				else
 					error('All Rooms are full, sending 0x05B to exit.')
@@ -277,7 +322,9 @@ windower.register_event('zone change',function(new_id,old_id)
 		first_poke = false
 		activate_by_addon = false
 		log('You have left the BCNM Entry area!')
-	elseif zones[new_id] then
+		delete_commands()
+	end
+	if zones[new_id] then
 		log('You have zoned into a BCNM Entry area. Waiting for player data...')
 		coroutine.sleep(2)
 		log('...')
@@ -302,8 +349,11 @@ windower.register_event('zone change',function(new_id,old_id)
 		log('...')
 		coroutine.sleep(2)
 		log('...')
-		notice("Checking for missing KI's!")
 		forced_update = true
+		local packet = packets.new('outgoing', 0x061, {})
+		packets.inject(packet)
+		coroutine.sleep(1.5)
+		notice("Checking for missing KI's!")
 		find_missing_kis(new_id)
 	else
 		delete_commands()
